@@ -12,6 +12,10 @@
 #import "RNCYMView.h"
 #import <YamapMarkerView.h>
 
+#import "YamapPolygonView.h"
+#import "YamapPolylineView.h"
+#import "YamapCircleView.h"
+
 #define ANDROID_COLOR(c) [UIColor colorWithRed:((c>>16)&0xFF)/255.0 green:((c>>8)&0xFF)/255.0 blue:((c)&0xFF)/255.0  alpha:((c>>24)&0xFF)/255.0]
 
 #define UIColorFromRGB(rgbValue) [UIColor colorWithRed:((float)((rgbValue & 0xFF0000) >> 16))/255.0 green:((float)((rgbValue & 0xFF00) >> 8))/255.0 blue:((float)(rgbValue & 0xFF))/255.0 alpha:1.0]
@@ -25,7 +29,7 @@
     YMKPedestrianRouter *pedestrianRouter;
     YMKTransitOptions *transitOptions;
     YMKMasstransitSessionRouteHandler routeHandler;
-    NSMutableArray<UIView*>* _reactSubviews;
+    NSMutableArray<UIView*> *_reactSubviews;
     NSMutableArray *routes;
     NSMutableArray *currentRouteInfo;
     NSMutableArray<YMKRequestPoint *>* lastKnownRoutePoints;
@@ -128,31 +132,87 @@
 }
 
 - (void)insertReactSubview:(UIView<RCTComponent>*) subview atIndex:(NSInteger) atIndex {
-     if ([subview isKindOfClass:[YamapMarkerView class]]) {
+    NSLog(@"=== INSERT SUBVIEW ===");
+    NSLog(@"Subview class: %@", [subview class]);
+    NSLog(@"AtIndex: %ld", (long)atIndex);
+
+    if ([subview isKindOfClass:[YamapMarkerView class]]) {
+     NSLog(@"👉 Found YamapMarkerView - ADDING TO MAP");
         YamapMarkerView* marker = (YamapMarkerView*) subview;
-         if (atIndex<[placemarks count]) {
-             [marker setClusterMapObject:[placemarks objectAtIndex:atIndex]];
-         }
+        if (atIndex<[placemarks count]) {
+            [marker setClusterMapObject:[placemarks objectAtIndex:atIndex]];
+        }
     }
+    
+    // ДОБАВЛЯЕМ ОБРАБОТКУ ПРИМИТИВОВ
+    else if ([subview isKindOfClass:[YamapPolygonView class]]) {
+        NSLog(@"👉 Found YamapPolygonView - ADDING TO MAP");
+        YMKMapObjectCollection *objects = self.mapWindow.map.mapObjects;
+        YamapPolygonView *polygon = (YamapPolygonView *) subview;
+        YMKPolygonMapObject *obj = [objects addPolygonWithPolygon:[polygon getPolygon]];
+        [polygon setMapObject:obj];
+    } else if ([subview isKindOfClass:[YamapPolylineView class]]) {
+        YMKMapObjectCollection *objects = self.mapWindow.map.mapObjects;
+        YamapPolylineView *polyline = (YamapPolylineView*) subview;
+        YMKPolylineMapObject *obj = [objects addPolylineWithPolyline:[polyline getPolyline]];
+        [polyline setMapObject:obj];
+    } else if ([subview isKindOfClass:[YamapCircleView class]]) {
+        NSLog(@"👉 Found YamapCircleView - ADDING TO MAP");
+        YMKMapObjectCollection *objects = self.mapWindow.map.mapObjects;
+        YamapCircleView *circle = (YamapCircleView*) subview;
+        YMKCircleMapObject *obj = [objects addCircleWithCircle:[circle getCircle]];
+        [circle setMapObject:obj];
+    }
+    // Обработка вложенных children
+    else {
+        NSArray<id<RCTComponent>> *childSubviews = [subview reactSubviews];
+        for (int i = 0; i < childSubviews.count; i++) {
+            [self insertReactSubview:(UIView *)childSubviews[i] atIndex:atIndex];
+        }
+    }
+
     [_reactSubviews insertObject:subview atIndex:atIndex];
     [super insertMarkerReactSubview:subview atIndex:atIndex];
+
+    NSLog(@"Total reactSubviews count: %lu", (unsigned long)[_reactSubviews count]);
 }
 
 - (void)removeReactSubview:(UIView<RCTComponent>*) subview {
-     if ([subview isKindOfClass:[YamapMarkerView class]]) {
+
+
+    if ([subview isKindOfClass:[YamapMarkerView class]]) {
         YamapMarkerView* marker = (YamapMarkerView*) subview;
         [clusterCollection removeWithMapObject:[marker getMapObject]];
-    } else {
+    }
+    // ДОБАВЛЯЕМ ОБРАБОТКУ ПРИМИТИВОВ
+    else if ([subview isKindOfClass:[YamapPolygonView class]]) {
+        YMKMapObjectCollection *objects = self.mapWindow.map.mapObjects;
+        YamapPolygonView *polygon = (YamapPolygonView *) subview;
+        [objects removeWithMapObject:[polygon getMapObject]];
+    } else if ([subview isKindOfClass:[YamapPolylineView class]]) {
+        YMKMapObjectCollection *objects = self.mapWindow.map.mapObjects;
+        YamapPolylineView *polyline = (YamapPolylineView *) subview;
+        [objects removeWithMapObject:[polyline getMapObject]];
+    } else if ([subview isKindOfClass:[YamapCircleView class]]) {
+
+        YMKMapObjectCollection *objects = self.mapWindow.map.mapObjects;
+        YamapCircleView *circle = (YamapCircleView *) subview;
+        [objects removeWithMapObject:[circle getMapObject]];
+    }
+
+    // Обработка вложенных children
+    else {
         NSArray<id<RCTComponent>> *childSubviews = [subview reactSubviews];
         for (int i = 0; i < childSubviews.count; i++) {
             [self removeReactSubview:(UIView *)childSubviews[i]];
         }
     }
+
     [_reactSubviews removeObject:subview];
     [super removeMarkerReactSubview:subview];
 }
 
--(UIImage*)clusterImage:(NSNumber*) clusterSize {
+/* -(UIImage*)clusterImage:(NSNumber*) clusterSize {
     float FONT_SIZE = 45;
     float MARGIN_SIZE = 9;
     float STROKE_SIZE = 9;
@@ -179,6 +239,103 @@
        UIGraphicsEndImageContext();
 
        return newImage;
+} */
+
+-(UIImage*)clusterImage:(NSNumber*) clusterSize {
+    NSString *text = [clusterSize stringValue];
+
+    // Создаем базовую иконку улья
+    UIImage *hiveIcon = [self createHiveBaseIcon];
+
+    // Рисуем число поверх иконки
+    return [self drawTextOnHiveIcon:hiveIcon text:text];
+}
+
+-(UIImage*)createHiveBaseIcon {
+    // Размеры как в SVG
+    float width = 71.0f;
+    float height = 78.0f;
+    float scale = 1.4f;
+
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(width * scale, height * scale), NO, 0.0);
+    CGContextRef context = UIGraphicsGetCurrentContext();
+    CGContextScaleCTM(context, scale, scale);
+
+    // Основной белый шестиугольник
+    UIBezierPath *outerHexagon = [UIBezierPath bezierPath];
+    [outerHexagon moveToPoint:CGPointMake(39.5673, 1.06982)];
+    [outerHexagon addLineToPoint:CGPointMake(31.4327, 1.0696)];
+    [outerHexagon addLineToPoint:CGPointMake(4.06851, 16.5748)];
+    [outerHexagon addLineToPoint:CGPointMake(0, 23.4905)];
+    [outerHexagon addLineToPoint:CGPointMake(0, 54.5072)];
+    [outerHexagon addLineToPoint:CGPointMake(4.0673, 61.4225)];
+    [outerHexagon addLineToPoint:CGPointMake(31.4327, 76.9302)];
+    [outerHexagon addLineToPoint:CGPointMake(39.5673, 76.9302)];
+    [outerHexagon addLineToPoint:CGPointMake(66.9327, 61.4225)];
+    [outerHexagon addLineToPoint:CGPointMake(71, 54.5072)];
+    [outerHexagon addLineToPoint:CGPointMake(71, 23.4926)];
+    [outerHexagon addLineToPoint:CGPointMake(66.9327, 16.5772)];
+    [outerHexagon closePath];
+
+    [[UIColor whiteColor] setFill];
+    [outerHexagon fill];
+
+    // Внутренний шестиугольник с обводкой
+    UIBezierPath *innerHexagon = [UIBezierPath bezierPath];
+    [innerHexagon moveToPoint:CGPointMake(32.8515, 12.5576)];
+    [innerHexagon addLineToPoint:CGPointMake(37.3164, 12.5576)];
+    [innerHexagon addLineToPoint:CGPointMake(57.3056, 23.8604)];
+    [innerHexagon addLineToPoint:CGPointMake(59.5156, 27.5957)];
+    [innerHexagon addLineToPoint:CGPointMake(59.5156, 50.2012)];
+    [innerHexagon addLineToPoint:CGPointMake(57.3056, 53.9355)];
+    [innerHexagon addLineToPoint:CGPointMake(37.3164, 65.2383)];
+    [innerHexagon addLineToPoint:CGPointMake(33.1133, 65.376)];
+    [innerHexagon addLineToPoint:CGPointMake(32.8515, 65.2383)];
+    [innerHexagon addLineToPoint:CGPointMake(12.8613, 53.9355)];
+    [innerHexagon addLineToPoint:CGPointMake(10.6523, 50.2012)];
+    [innerHexagon addLineToPoint:CGPointMake(10.6523, 27.5938)];
+    [innerHexagon addLineToPoint:CGPointMake(12.8623, 23.8594)];
+    [innerHexagon closePath];
+
+    UIColor *orangeColor = [UIColor colorWithRed:255.0/255.0 green:79.0/255.0 blue:18.0/255.0 alpha:1.0];
+    [orangeColor setStroke];
+    innerHexagon.lineWidth = 3.0;
+    [innerHexagon stroke];
+
+    UIImage *baseIcon = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+
+    return baseIcon;
+}
+
+-(UIImage*)drawTextOnHiveIcon:(UIImage*)hiveIcon text:(NSString*)text {
+    UIFont *font;
+    //font = [UIFont boldSystemFontOfSize:22];
+    font = [UIFont systemFontOfSize:22 weight:UIFontWeightHeavy];
+    UIColor *orangeColor = [UIColor colorWithRed:255.0/255.0 green:79.0/255.0 blue:18.0/255.0 alpha:1.0];
+
+    UIGraphicsBeginImageContextWithOptions(hiveIcon.size, NO, hiveIcon.scale);
+    [hiveIcon drawInRect:CGRectMake(0, 0, hiveIcon.size.width, hiveIcon.size.height)];
+
+    NSDictionary *textAttributes = @{
+        NSFontAttributeName: font,
+        NSForegroundColorAttributeName: orangeColor,
+        NSStrokeColorAttributeName: [UIColor whiteColor],
+        NSStrokeWidthAttributeName: @-2.0
+    };
+
+    CGSize textSize = [text sizeWithAttributes:textAttributes];
+    CGPoint textPoint = CGPointMake(
+        (hiveIcon.size.width - textSize.width) / 2,
+        (hiveIcon.size.height - textSize.height) / 2
+    );
+
+    [text drawAtPoint:textPoint withAttributes:textAttributes];
+
+    UIImage *resultImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+
+    return resultImage;
 }
 
 - (void)onClusterAddedWithCluster:(nonnull YMKCluster *)cluster {

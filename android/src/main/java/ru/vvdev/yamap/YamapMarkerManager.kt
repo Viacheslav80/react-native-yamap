@@ -26,6 +26,7 @@ class YamapMarkerManager internal constructor() : ViewGroupManager<YamapMarker>(
     override fun getExportedCustomBubblingEventTypeConstants(): MutableMap<String, Any>? {
         return MapBuilder.builder<String, Any>()
             .build()
+            .toMutableMap()
     }
 
     private fun castToMarkerView(view: View): YamapMarker {

@@ -84,7 +84,7 @@ class ClusteredYamapViewManager internal constructor() : ViewGroupManager<Cluste
                     MapBuilder.of("bubbled", "onWorldToScreenPointsReceived")
                 )
             )
-            .build()
+            .build().toMutableMap()
     }
 
     override fun getCommandsMap(): Map<String, Int>? {

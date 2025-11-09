@@ -245,10 +245,11 @@ export class ClusteredYamap extends React.Component<ClusteredYaMapProps> {
   }
 
   private getProps() {
+    const childrenArray = React.Children.toArray(this.props.children);
     const props = {
       ...this.props,
       clusteredMarkers: this.props.clusteredMarkers.map(mark => mark.point),
-      children: this.props.clusteredMarkers.map(this.props.renderMarker),
+      children: [...this.props.clusteredMarkers.map(this.props.renderMarker), ...childrenArray],
       onRouteFound: this.processRoute,
       onCameraPositionReceived: this.processCameraPosition,
       onVisibleRegionReceived: this.processVisibleRegion,
@@ -259,7 +260,7 @@ export class ClusteredYamap extends React.Component<ClusteredYaMapProps> {
     processColorProps(props, 'clusterColor' as keyof ClusteredYaMapProps);
     processColorProps(props, 'userLocationAccuracyFillColor' as keyof ClusteredYaMapProps);
     processColorProps(props, 'userLocationAccuracyStrokeColor' as keyof ClusteredYaMapProps);
-
+    console.log('props ClusterYamapProps ', props);
     return props;
   }
 

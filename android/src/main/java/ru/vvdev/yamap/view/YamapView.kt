@@ -73,6 +73,12 @@ import ru.vvdev.yamap.models.ReactMapObject
 import ru.vvdev.yamap.utils.Callback
 import ru.vvdev.yamap.utils.ImageLoader.DownloadImageBitmap
 import ru.vvdev.yamap.utils.RouteManager
+
+import com.yandex.mapkit.map.CircleMapObject
+import com.yandex.mapkit.map.PolygonMapObject
+import ru.vvdev.yamap.view.YamapCircle
+import ru.vvdev.yamap.view.YamapPolygon
+
 import java.util.Objects
 import javax.annotation.Nonnull
 

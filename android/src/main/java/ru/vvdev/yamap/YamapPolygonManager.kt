@@ -24,6 +24,7 @@ class YamapPolygonManager internal constructor() : ViewGroupManager<YamapPolygon
     override fun getExportedCustomBubblingEventTypeConstants(): MutableMap<String, Any>? {
         return MapBuilder.builder<String, Any>()
             .build()
+            .toMutableMap()
     }
 
     private fun castToPolygonView(view: View): YamapPolygon {

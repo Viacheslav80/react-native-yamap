@@ -24,6 +24,7 @@ class YamapPolylineManager internal constructor() : ViewGroupManager<YamapPolyli
     override fun getExportedCustomBubblingEventTypeConstants(): MutableMap<String, Any>? {
         return MapBuilder.builder<String, Any>()
             .build()
+            .toMutableMap()
     }
 
     private fun castToPolylineView(view: View): YamapPolyline {

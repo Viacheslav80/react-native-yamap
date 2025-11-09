@@ -45,6 +45,7 @@ RCT_EXPORT_MODULE()
     [map setCenter:pos withDuration:duration withAnimation:animation];
 }
 
+
 // props
 RCT_EXPORT_VIEW_PROPERTY(onRouteFound, RCTBubblingEventBlock)
 RCT_EXPORT_VIEW_PROPERTY(onCameraPositionReceived, RCTBubblingEventBlock)
@@ -237,5 +238,6 @@ RCT_EXPORT_METHOD(getVisibleRegion:(nonnull NSNumber*) reactTag _id:(NSString*_N
         [view emitVisibleRegionToJS:_id];
     }];
 }
+
 
 @end

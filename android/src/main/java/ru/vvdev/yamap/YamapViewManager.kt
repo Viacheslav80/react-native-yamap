@@ -85,6 +85,7 @@ class YamapViewManager internal constructor() : ViewGroupManager<YamapView>() {
                 )
             )
             .build()
+            .toMutableMap()
     }
 
     override fun getCommandsMap(): Map<String, Int>? {
